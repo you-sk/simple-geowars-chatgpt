@@ -1,44 +1,64 @@
 module.exports = {
-  // テスト環境
+  // Test environment
   testEnvironment: 'jsdom',
-  
-  // テストファイルの検出
-  testMatch: [
-    '**/__tests__/**/*.js',
-    '**/?(*.)+(spec|test).js'
+
+  // Test file detection
+  testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
+
+  // ES modules support with Babel
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
+
+  // Coverage settings
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  collectCoverageFrom: [
+    'src/**/*.js',
+    '!src/**/index.js',
+    '!src/systems/BackgroundRenderer.js',
+    '!src/systems/EffectsRenderer.js',
+    '!src/systems/Renderer.js',
+    '!src/systems/UIRenderer.js',
+    '!jest.config.js',
+    '!eslint.config.js',
+    '!**/*.test.js',
+    '!**/*.spec.js',
+    '!tests/**/*'
   ],
-  
-  // カバレッジ設定（一時的に無効化）
-  collectCoverage: false,
-  // coverageDirectory: 'coverage',
-  // coverageReporters: ['text', 'lcov', 'html'],
-  // collectCoverageFrom: [
-  //   '*.js',
-  //   '!jest.config.js',
-  //   '!eslint.config.js',
-  //   '!**/*.test.js',
-  //   '!**/*.spec.js',
-  //   '!tests/**/*'
-  // ],
-  
-  // カバレッジ閾値（一時的に無効化）
-  // coverageThreshold: {
-  //   global: {
-  //     branches: 30,
-  //     functions: 30,
-  //     lines: 30,
-  //     statements: 30
-  //   }
-  // },
-  
-  // モック設定
+
+  // Coverage thresholds
+  coverageThreshold: {
+    global: {
+      branches: 50,
+      functions: 40,
+      lines: 50,
+      statements: 50
+    },
+    'src/entities/*.js': {
+      branches: 85,
+      functions: 90,
+      lines: 90,
+      statements: 90
+    },
+    'src/config/*.js': {
+      branches: 100,
+      functions: 100,
+      lines: 100,
+      statements: 100
+    },
+    'src/systems/GameState.js': {
+      branches: 100,
+      functions: 100,
+      lines: 100,
+      statements: 100
+    }
+  },
+
+  // Setup files
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  
-  // モジュール解決
-  moduleFileExtensions: ['js', 'json'],
-  
-  // 変換設定（必要に応じて）
-  transform: {},
-  
-  // グローバル設定を削除（setupFilesAfterEnvで設定するため）
+
+  // Module resolution
+  moduleFileExtensions: ['js', 'json']
 };

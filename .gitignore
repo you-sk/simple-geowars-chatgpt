@@ -27,6 +27,9 @@ build/
 # Test coverage
 coverage/
 
+# Babel cache
+.babel_cache/
+
 # Temporary files
 *.tmp
 *.temp

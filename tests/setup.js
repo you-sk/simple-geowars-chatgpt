@@ -6,7 +6,7 @@
 // 追加のメソッドのモック
 if (typeof document !== 'undefined') {
   const originalGetElementById = document.getElementById;
-  document.getElementById = jest.fn((id) => {
+  document.getElementById = jest.fn(id => {
     const element = originalGetElementById.call(document, id);
     if (element) return element;
     // 存在しない要素の場合はモックを返す
@@ -160,14 +160,14 @@ if (typeof global.canvas === 'undefined') {
 //   // Node.js環境でファイルを読み込み、評価
 //   const fs = require('fs');
 //   const path = require('path');
-//   
+//
 //   // audio.js を先に読み込み
 //   const audioPath = path.join(__dirname, '..', 'audio.js');
 //   if (fs.existsSync(audioPath)) {
 //     const audioCode = fs.readFileSync(audioPath, 'utf8');
 //     eval(audioCode);
 //   }
-//   
+//
 //   // game.js を読み込み
 //   const gamePath = path.join(__dirname, '..', 'game.js');
 //   if (fs.existsSync(gamePath)) {

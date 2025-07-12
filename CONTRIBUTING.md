@@ -3,10 +3,12 @@
 ## 開発環境のセットアップ
 
 ### 必要なツール
+
 - Node.js 16.0.0 以上
 - モダンブラウザ（Chrome, Firefox, Edge, Safari）
 
 ### インストール
+
 ```bash
 # リポジトリをクローン
 git clone https://github.com/yourusername/geoshooter-twin-stick-arena.git
@@ -22,6 +24,7 @@ npm run dev
 ## 開発ワークフロー
 
 ### 1. コード品質チェック
+
 ```bash
 # リントチェック
 npm run lint
@@ -37,6 +40,7 @@ npm run validate
 ```
 
 ### 2. ブランチ戦略
+
 - `main`: 安定版
 - `develop`: 開発版
 - `feature/機能名`: 新機能開発
@@ -44,6 +48,7 @@ npm run validate
 - `refactor/改善名`: リファクタリング
 
 ### 3. コミットメッセージ規約
+
 ```
 type(scope): subject
 
@@ -53,6 +58,7 @@ footer
 ```
 
 **Type:**
+
 - `feat`: 新機能
 - `fix`: バグ修正
 - `docs`: ドキュメント
@@ -62,6 +68,7 @@ footer
 - `chore`: その他
 
 **例:**
+
 ```
 feat(enemy): add boss enemy type
 
@@ -76,6 +83,7 @@ Closes #123
 ## コーディング規約
 
 ### 1. ファイル構成
+
 ```
 src/
 ├── core/          # コアシステム
@@ -87,12 +95,14 @@ src/
 ```
 
 ### 2. 命名規則
+
 - **クラス**: PascalCase (`EnemyManager`)
 - **関数・変数**: camelCase (`updatePosition`)
 - **定数**: UPPER_SNAKE_CASE (`MAX_ENEMIES`)
 - **ファイル**: PascalCase (`EnemyManager.js`)
 
 ### 3. クラス設計原則
+
 ```javascript
 // ❌ 悪い例: 責務が混在
 class Player {
@@ -110,7 +120,7 @@ class Player {
     this.position = new Vec2(0, 0);
     this.health = 100;
   }
-  
+
   takeDamage(amount) {
     this.health = Math.max(0, this.health - amount);
     return this.health === 0;
@@ -125,6 +135,7 @@ class PlayerInputHandler {
 ```
 
 ### 4. エラーハンドリング
+
 ```javascript
 // 必須: 外部APIアクセス時のエラーハンドリング
 function loadGameData() {
@@ -149,11 +160,13 @@ function setPlayerName(name) {
 ## テスト指針
 
 ### 1. テスト種類
+
 - **Unit Tests**: 個別関数・クラス
 - **Integration Tests**: システム間連携
 - **E2E Tests**: ユーザーシナリオ
 
 ### 2. テスト作成例
+
 ```javascript
 // Vec2.test.js
 import { Vec2 } from '../src/utils/Vec2.js';
@@ -192,6 +205,7 @@ describe('Vec2', () => {
 ```
 
 ### 3. カバレッジ目標
+
 - 関数カバレッジ: 70%以上
 - 行カバレッジ: 70%以上
 - 分岐カバレッジ: 70%以上
@@ -199,12 +213,14 @@ describe('Vec2', () => {
 ## パフォーマンス指針
 
 ### 1. 最適化優先順位
+
 1. **アルゴリズム効率**: O(n²) → O(n log n)
 2. **メモリ使用量**: オブジェクトプール、再利用
 3. **描画最適化**: 不要な再描画を避ける
 4. **イベント処理**: デバウンス、スロットリング
 
 ### 2. パフォーマンス測定
+
 ```javascript
 // パフォーマンス測定例
 console.time('collision-detection');
@@ -219,32 +235,40 @@ console.log('Particles:', particles.length);
 ## Pull Request指針
 
 ### 1. PR作成前チェックリスト
+
 - [ ] `npm run validate` が通る
 - [ ] 新機能にテストを追加
 - [ ] ドキュメントを更新
 - [ ] 破壊的変更がある場合はマイグレーションガイドを作成
 
 ### 2. PR説明テンプレート
+
 ```markdown
 ## 概要
+
 この変更の概要を説明
 
 ## 変更内容
+
 - 追加した機能
 - 修正したバグ
 - リファクタリング内容
 
 ## テスト
+
 - 追加したテスト内容
 - 動作確認方法
 
 ## スクリーンショット
+
 （必要に応じて）
 
 ## Breaking Changes
+
 （破壊的変更がある場合）
 
 ## Checklist
+
 - [ ] テストが通る
 - [ ] ドキュメントを更新
 - [ ] リントエラーがない

@@ -11,25 +11,16 @@ import Player from './Player.js';
 import Powerup from './Powerup.js';
 
 // Export all entities
-export {
-    Vec2,
-    Particle,
-    Bullet,
-    LaserBullet,
-    Trail,
-    Enemy,
-    Player,
-    Powerup
-};
+export { Vec2, Particle, Bullet, LaserBullet, Trail, Enemy, Player, Powerup };
 
 // Default export for convenience
 export default {
-    Vec2,
-    Particle,
-    Bullet,
-    LaserBullet,
-    Trail,
-    Enemy,
-    Player,
-    Powerup
+  Vec2,
+  Particle,
+  Bullet,
+  LaserBullet,
+  Trail,
+  Enemy,
+  Player,
+  Powerup
 };

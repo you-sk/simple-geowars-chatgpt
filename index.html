@@ -1,71 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <title>GeoShooter – Twin‑Stick Arena</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      overflow: hidden;
-      font-family: 'Courier New', monospace;
-    }
-    
-    canvas {
-      display: block;
-      margin: 0 auto;
-      background: #000;
-    }
-    
-    #ui {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: #0f0;
-      font-family: 'Courier New', monospace;
-      font-size: 14px;
-      z-index: 10;
-      user-select: none;
-      text-shadow: 0 0 5px #0f0;
-    }
-    
-    #ui span {
-      font-weight: bold;
-    }
-    
-    .ui-row {
-      margin-bottom: 2px;
-    }
-    
-    #combo-display {
-      color: #ff0;
-      text-shadow: 0 0 8px #ff0;
-    }
-  </style>
-</head>
-<body>
-  <canvas id="game"></canvas>
-  <div id="ui">
-    <div class="ui-row">
-      Score: <span id="score">0</span> &nbsp;
-      Lives: <span id="lives">3</span> &nbsp;
-      Bombs: <span id="bombs">3</span>
+  <head>
+    <meta charset="UTF-8" />
+    <title>GeoShooter – Twin‑Stick Arena</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        overflow: hidden;
+        font-family: 'Courier New', monospace;
+      }
+
+      canvas {
+        display: block;
+        margin: 0 auto;
+        background: #000;
+      }
+
+      #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: #0f0;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        z-index: 10;
+        user-select: none;
+        text-shadow: 0 0 5px #0f0;
+      }
+
+      #ui span {
+        font-weight: bold;
+      }
+
+      .ui-row {
+        margin-bottom: 2px;
+      }
+
+      #combo-display {
+        color: #ff0;
+        text-shadow: 0 0 8px #ff0;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="ui">
+      <div class="ui-row">
+        Score: <span id="score">0</span> &nbsp; Lives: <span id="lives">3</span> &nbsp; Bombs:
+        <span id="bombs">3</span>
+      </div>
+      <div class="ui-row">High Score: <span id="highscore">0</span></div>
+      <div class="ui-row" id="combo-display" style="display: none">
+        Combo: <span id="combo">0</span>x &nbsp; Multiplier: <span id="multiplier">1</span>x
+      </div>
     </div>
-    <div class="ui-row">
-      High Score: <span id="highscore">0</span>
-    </div>
-    <div class="ui-row" id="combo-display" style="display: none;">
-      Combo: <span id="combo">0</span>x &nbsp;
-      Multiplier: <span id="multiplier">1</span>x
-    </div>
-  </div>
-  <script src="audio.js"></script>
-  <script src="src/systems/Renderer.js"></script>
-  <script src="src/systems/BackgroundRenderer.js"></script>
-  <script src="src/systems/EffectsRenderer.js"></script>
-  <script src="src/systems/UIRenderer.js"></script>
-  <script src="src/systems/index.js"></script>
-  <script src="game.js"></script>
-</body>
+    <script src="audio.js"></script>
+    <script src="src/systems/Renderer.js"></script>
+    <script src="src/systems/BackgroundRenderer.js"></script>
+    <script src="src/systems/EffectsRenderer.js"></script>
+    <script src="src/systems/UIRenderer.js"></script>
+    <script src="src/systems/index.js"></script>
+    <script type="module" src="game.js"></script>
+  </body>
 </html>
