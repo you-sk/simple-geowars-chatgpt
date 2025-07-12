@@ -81,6 +81,10 @@ const GameConfig = {
     powerupDropChance: 0.15, // 15% chance
     powerupDuration: 15, // seconds
     powerupSpeed: 60,
+    
+    // Bombs
+    startingBombs: 3,
+    maxBombs: 5,
 };
 
 // ===== Visual Effects =====
@@ -716,9 +720,14 @@ class Player {
 }
 
 // ===== Game State =====
-let player, bullets, enemies, particles, powerups, spawnTimer, score, lives, lastTs;
+let player, bullets, enemies, particles, powerups, spawnTimer, score, lives, bombs, lastTs;
 let currentSpawnInterval;
-let gameState = "playing"; // "playing", "gameover"
+let gameState = "playing"; // "playing", "gameover", "paused"
+let highScore = 0;
+let comboCount = 0;
+let comboTimer = 0;
+let scoreMultiplier = 1;
+let bombEffect = null;
 
 function reset() {
     player = new Player();
@@ -729,17 +738,53 @@ function reset() {
     spawnTimer = 0;
     score = 0;
     lives = GameConfig.startingLives;
+    bombs = GameConfig.startingBombs;
     currentSpawnInterval = GameConfig.enemySpawnBaseInterval;
     gameState = "playing";
+    comboCount = 0;
+    comboTimer = 0;
+    scoreMultiplier = 1;
+    bombEffect = null;
+    
+    // Load high score from localStorage
+    loadHighScore();
     updateUI();
     
     // Start BGM
     audioSystem.startBGM();
 }
 
+function loadHighScore() {
+    const saved = localStorage.getItem('geoshooter-highscore');
+    if (saved) {
+        highScore = parseInt(saved, 10) || 0;
+    }
+}
+
+function saveHighScore() {
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('geoshooter-highscore', highScore.toString());
+        return true; // New high score
+    }
+    return false;
+}
+
 function updateUI() {
     document.getElementById("score").textContent = score;
     document.getElementById("lives").textContent = lives;
+    document.getElementById("bombs").textContent = bombs;
+    document.getElementById("highscore").textContent = highScore;
+    
+    // Update combo display
+    const comboDisplay = document.getElementById("combo-display");
+    if (comboCount > 3) {
+        comboDisplay.style.display = "block";
+        document.getElementById("combo").textContent = comboCount;
+        document.getElementById("multiplier").textContent = scoreMultiplier.toFixed(1);
+    } else {
+        comboDisplay.style.display = "none";
+    }
 }
 
 function getDifficultyMultiplier() {
@@ -792,28 +837,171 @@ function spawnEnemy() {
     enemies.push(new Enemy(pos, vel, enemyType));
 }
 
+// ===== Bomb System =====
+class BombEffect {
+    constructor() {
+        this.radius = 0;
+        this.maxRadius = Math.max(canvas.width, canvas.height) * 0.7;
+        this.duration = 1.0;
+        this.age = 0;
+        this.waves = [];
+        
+        // Create multiple expanding waves
+        for (let i = 0; i < 3; i++) {
+            this.waves.push({
+                delay: i * 0.1,
+                started: false
+            });
+        }
+    }
+    
+    update(dt) {
+        this.age += dt;
+        
+        // Update main expansion
+        if (this.age <= this.duration) {
+            const progress = this.age / this.duration;
+            this.radius = this.maxRadius * Math.pow(progress, 0.5); // Square root for smooth expansion
+        }
+        
+        return this.age < this.duration;
+    }
+    
+    draw() {
+        const center = player.pos;
+        
+        // Draw multiple expanding rings
+        for (let i = 0; i < this.waves.length; i++) {
+            const wave = this.waves[i];
+            const waveAge = this.age - wave.delay;
+            
+            if (waveAge > 0) {
+                const waveProgress = Math.min(waveAge / this.duration, 1);
+                const waveRadius = this.maxRadius * Math.pow(waveProgress, 0.5);
+                const alpha = 1 - waveProgress;
+                
+                ctx.strokeStyle = `rgba(255, 255, 0, ${alpha * 0.8})`;
+                ctx.shadowBlur = 20 * alpha;
+                ctx.shadowColor = "#ff0";
+                ctx.lineWidth = 8 * alpha;
+                ctx.beginPath();
+                ctx.arc(center.x, center.y, waveRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        // Draw filled blast area
+        const alpha = Math.max(0, 1 - this.age / this.duration);
+        ctx.fillStyle = `rgba(255, 255, 0, ${alpha * 0.1})`;
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    getRadius() {
+        return this.radius;
+    }
+}
+
+function useBomb() {
+    if (bombs <= 0 || bombEffect) return false;
+    
+    bombs--;
+    updateUI();
+    
+    // Create bomb effect
+    bombEffect = new BombEffect();
+    
+    // Destroy all enemies in range and award points
+    let destroyedCount = 0;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        const distance = player.pos.sub(enemy.pos).len();
+        
+        if (distance <= bombEffect.maxRadius) {
+            const destroyedEnemy = enemies.splice(i, 1)[0];
+            score += destroyedEnemy.scoreValue;
+            destroyedCount++;
+            
+            // Create explosion effect
+            spawnExplosion(destroyedEnemy.pos, destroyedEnemy.color);
+            
+            // Handle splitter enemies
+            const newEnemies = destroyedEnemy.onDestroy();
+            enemies.push(...newEnemies);
+        }
+    }
+    
+    // Bonus points for multi-kill
+    if (destroyedCount > 5) {
+        score += destroyedCount * 5; // Bonus points
+    }
+    
+    updateUI();
+    
+    // Play bomb sound
+    audioSystem.playSound('gameOver', 0.3); // Reuse game over sound as bomb sound
+    
+    return true;
+}
+
 function gameOverScreen() {
     ctx.fillStyle = "rgba(0,0,0,0.8)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const isNewHighScore = saveHighScore();
+    
     ctx.fillStyle = "#f00";
     ctx.font = "48px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
-    ctx.font = "24px sans-serif";
-    ctx.fillText("Press R / Start to Restart", canvas.width / 2, canvas.height / 2 + 40);
+    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 60);
+    
     ctx.font = "20px sans-serif";
     ctx.fillStyle = "#fff";
-    ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 80);
+    ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 - 20);
+    
+    if (isNewHighScore) {
+        ctx.fillStyle = "#ff0";
+        ctx.font = "bold 24px sans-serif";
+        ctx.fillText("NEW HIGH SCORE!", canvas.width / 2, canvas.height / 2 + 10);
+    } else {
+        ctx.fillStyle = "#999";
+        ctx.font = "18px sans-serif";
+        ctx.fillText(`High Score: ${highScore}`, canvas.width / 2, canvas.height / 2 + 10);
+    }
+    
+    ctx.font = "24px sans-serif";
+    ctx.fillStyle = "#0f0";
+    ctx.fillText("Press R / Start to Restart", canvas.width / 2, canvas.height / 2 + 60);
+}
+
+function pauseScreen() {
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#0f0";
+    ctx.font = "48px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
+    ctx.font = "24px sans-serif";
+    ctx.fillText("Press P / Select to Resume", canvas.width / 2, canvas.height / 2 + 40);
 }
 
 function update(dt) {
-    if (gameState !== "playing") return false;
+    if (gameState !== "playing") return gameState === "gameover" ? false : true;
     
     player.update(dt);
     bullets.forEach(b => b.update(dt));
     enemies.forEach(e => e.update(dt, player.pos));
     particles.forEach(p => p.update(dt));
     powerups.forEach(p => p.update(dt));
+    
+    // Update bomb effect
+    if (bombEffect) {
+        if (!bombEffect.update(dt)) {
+            bombEffect = null;
+        }
+    }
     
     // Collisions bullet-enemy
     outer: for (let i = enemies.length - 1; i >= 0; i--) {
@@ -833,7 +1021,13 @@ function update(dt) {
                     bullets.splice(j, 1);
                 }
                 
-                score += destroyedEnemy.scoreValue;
+                // Combo system
+                comboCount++;
+                comboTimer = 3.0; // Reset combo timer
+                scoreMultiplier = 1 + Math.floor(comboCount / 5) * 0.5; // Increase multiplier every 5 combo
+                
+                const points = Math.floor(destroyedEnemy.scoreValue * scoreMultiplier);
+                score += points;
                 updateUI();
                 spawnExplosion(destroyedEnemy.pos, destroyedEnemy.color);
                 
@@ -844,11 +1038,18 @@ function update(dt) {
                 const newEnemies = destroyedEnemy.onDestroy();
                 enemies.push(...newEnemies);
                 
-                // Chance to drop powerup
+                // Chance to drop powerup or bomb
                 if (Math.random() < GameConfig.powerupDropChance) {
-                    const powerupTypes = ["triple", "laser", "shield"];
-                    const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
-                    powerups.push(new Powerup(destroyedEnemy.pos, randomType));
+                    if (bombs < GameConfig.maxBombs && Math.random() < 0.2) {
+                        // 20% chance for bomb when possible
+                        bombs++;
+                        updateUI();
+                        spawnExplosion(destroyedEnemy.pos, "#ff0"); // Yellow explosion for bomb pickup
+                    } else {
+                        const powerupTypes = ["triple", "laser", "shield"];
+                        const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+                        powerups.push(new Powerup(destroyedEnemy.pos, randomType));
+                    }
                 }
                 
                 continue outer;
@@ -887,6 +1088,16 @@ function update(dt) {
         }
     }
     
+    // Update combo timer
+    if (comboTimer > 0) {
+        comboTimer -= dt;
+        if (comboTimer <= 0) {
+            comboCount = 0;
+            scoreMultiplier = 1;
+            updateUI();
+        }
+    }
+    
     // Clean up off-screen bullets, dead particles, and expired powerups
     bullets = bullets.filter(b => !b.offScreen());
     particles = particles.filter(p => p.life > 0);
@@ -916,6 +1127,11 @@ function draw() {
     player.draw();
     bullets.forEach(b => b.draw());
     enemies.forEach(e => e.draw());
+    
+    // Draw bomb effect
+    if (bombEffect) {
+        bombEffect.draw();
+    }
     
     // Draw difficulty indicator
     ctx.fillStyle = "#666";
@@ -947,7 +1163,10 @@ function loop(ts) {
     const dt = (ts - lastTs) / 1000;
     lastTs = ts;
     
-    if (update(dt)) {
+    if (gameState === "paused") {
+        draw();
+        pauseScreen();
+    } else if (update(dt)) {
         draw();
     } else {
         draw();
@@ -961,13 +1180,51 @@ function loop(ts) {
 window.addEventListener("keydown", e => {
     if (e.code === "KeyR" && gameState === "gameover") {
         reset();
+    } else if (e.code === "KeyP" && (gameState === "playing" || gameState === "paused")) {
+        if (gameState === "playing") {
+            gameState = "paused";
+            audioSystem.setBGMVolume(0.1); // Lower BGM volume when paused
+        } else {
+            gameState = "playing";
+            audioSystem.setBGMVolume(0.3); // Restore BGM volume
+        }
+    } else if (e.code === "Escape" && gameState === "paused") {
+        gameState = "playing";
+        audioSystem.setBGMVolume(0.3);
+    } else if (e.code === "Space" && gameState === "playing") {
+        useBomb();
     }
 });
 
+let lastGamepadButtons = {};
+
 function pollGamepad() {
     const gp = readGamepad();
-    if (gameState === "gameover" && gp && gp.buttons[9].pressed) {
-        reset();
+    if (gp) {
+        // Check for button presses (not held)
+        const currentButtons = {};
+        for (let i = 0; i < gp.buttons.length; i++) {
+            currentButtons[i] = gp.buttons[i].pressed;
+        }
+        
+        if (gameState === "gameover" && gp.buttons[9].pressed && !lastGamepadButtons[9]) {
+            reset();
+        } else if ((gameState === "playing" || gameState === "paused") && gp.buttons[8].pressed && !lastGamepadButtons[8]) {
+            // Select button for pause
+            if (gameState === "playing") {
+                gameState = "paused";
+                audioSystem.setBGMVolume(0.1);
+            } else {
+                gameState = "playing";
+                audioSystem.setBGMVolume(0.3);
+            }
+        } else if (gameState === "playing" && (gp.buttons[0].pressed || gp.buttons[1].pressed) && 
+                   !(lastGamepadButtons[0] || lastGamepadButtons[1])) {
+            // A or B button for bomb
+            useBomb();
+        }
+        
+        lastGamepadButtons = currentButtons;
     }
     requestAnimationFrame(pollGamepad);
 }
@@ -1017,6 +1274,7 @@ document.body.addEventListener('DOMContentLoaded', () => {
     instructions.innerHTML = `
         <h2>GeoShooter - Twin Stick Arena</h2>
         <p>WASD: Move | Arrow Keys: Shoot</p>
+        <p>SPACE: Bomb | P: Pause | R: Restart (Game Over)</p>
         <p>Gamepad supported</p>
         <p><strong>Click anywhere to start!</strong></p>
     `;

@@ -33,13 +33,32 @@
     #ui span {
       font-weight: bold;
     }
+    
+    .ui-row {
+      margin-bottom: 2px;
+    }
+    
+    #combo-display {
+      color: #ff0;
+      text-shadow: 0 0 8px #ff0;
+    }
   </style>
 </head>
 <body>
   <canvas id="game"></canvas>
   <div id="ui">
-    Score: <span id="score">0</span> &nbsp;
-    Lives: <span id="lives">3</span>
+    <div class="ui-row">
+      Score: <span id="score">0</span> &nbsp;
+      Lives: <span id="lives">3</span> &nbsp;
+      Bombs: <span id="bombs">3</span>
+    </div>
+    <div class="ui-row">
+      High Score: <span id="highscore">0</span>
+    </div>
+    <div class="ui-row" id="combo-display" style="display: none;">
+      Combo: <span id="combo">0</span>x &nbsp;
+      Multiplier: <span id="multiplier">1</span>x
+    </div>
   </div>
   <script src="audio.js"></script>
   <script src="game.js"></script>
