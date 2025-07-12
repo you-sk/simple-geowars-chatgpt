@@ -18,9 +18,17 @@ class Vec2 {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+// Initialize background variable early
+let background = null;
+
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    
+    // Update background when canvas resizes
+    if (background) {
+        background.resize();
+    }
 }
 window.addEventListener("resize", resize);
 resize();
@@ -86,6 +94,137 @@ const GameConfig = {
     startingBombs: 3,
     maxBombs: 5,
 };
+
+// ===== Background System =====
+class BackgroundRenderer {
+    constructor() {
+        this.stars = [];
+        this.gridOffset = { x: 0, y: 0 };
+        this.gridSpeed = 10; // pixels per second
+        this.gridSize = 50;
+        this.time = 0;
+        
+        // Generate stars
+        this.generateStars();
+    }
+    
+    generateStars() {
+        const starCount = 150;
+        for (let i = 0; i < starCount; i++) {
+            this.stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2 + 0.5,
+                brightness: Math.random() * 0.5 + 0.3,
+                twinkleSpeed: Math.random() * 2 + 1,
+                twinklePhase: Math.random() * Math.PI * 2
+            });
+        }
+    }
+    
+    update(dt) {
+        this.time += dt;
+        
+        // Slowly drift the grid
+        this.gridOffset.x += this.gridSpeed * dt;
+        this.gridOffset.y += this.gridSpeed * dt * 0.7; // Different speed for more organic feel
+        
+        // Wrap grid offset
+        this.gridOffset.x %= this.gridSize;
+        this.gridOffset.y %= this.gridSize;
+        
+        // Update stars for twinkling
+        this.stars.forEach(star => {
+            star.twinklePhase += star.twinkleSpeed * dt;
+        });
+    }
+    
+    draw() {
+        // Draw animated grid
+        this.drawGrid();
+        
+        // Draw twinkling stars
+        this.drawStars();
+        
+        // Draw subtle scan lines
+        this.drawScanLines();
+    }
+    
+    drawGrid() {
+        ctx.strokeStyle = "rgba(0, 255, 0, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.shadowBlur = 0;
+        
+        const startX = -this.gridOffset.x;
+        const startY = -this.gridOffset.y;
+        
+        // Vertical lines
+        for (let x = startX; x < canvas.width + this.gridSize; x += this.gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        
+        // Horizontal lines
+        for (let y = startY; y < canvas.height + this.gridSize; y += this.gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        
+        // Add some grid intersection dots for extra detail
+        ctx.fillStyle = "rgba(0, 255, 0, 0.15)";
+        for (let x = startX; x < canvas.width + this.gridSize; x += this.gridSize) {
+            for (let y = startY; y < canvas.height + this.gridSize; y += this.gridSize) {
+                ctx.beginPath();
+                ctx.arc(x, y, 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+    
+    drawStars() {
+        this.stars.forEach(star => {
+            const twinkle = 0.5 + 0.5 * Math.sin(star.twinklePhase);
+            const alpha = star.brightness * twinkle;
+            
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+            ctx.shadowBlur = star.size * 2;
+            ctx.shadowColor = "#fff";
+            
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+        });
+    }
+    
+    drawScanLines() {
+        // Subtle horizontal scan lines that move
+        const scanLineSpeed = 20;
+        const scanLineSpacing = 4;
+        const scanOffset = (this.time * scanLineSpeed) % (scanLineSpacing * 2);
+        
+        ctx.strokeStyle = "rgba(0, 255, 255, 0.03)";
+        ctx.lineWidth = 1;
+        
+        for (let y = -scanOffset; y < canvas.height + scanLineSpacing; y += scanLineSpacing) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+    }
+    
+    resize() {
+        // Regenerate stars when canvas resizes
+        this.stars = [];
+        this.generateStars();
+    }
+}
 
 // ===== Visual Effects =====
 class Particle {
@@ -746,6 +885,11 @@ function reset() {
     scoreMultiplier = 1;
     bombEffect = null;
     
+    // Initialize background if not already done
+    if (!background) {
+        background = new BackgroundRenderer();
+    }
+    
     // Load high score from localStorage
     loadHighScore();
     updateUI();
@@ -990,6 +1134,11 @@ function pauseScreen() {
 function update(dt) {
     if (gameState !== "playing") return gameState === "gameover" ? false : true;
     
+    // Update background
+    if (background) {
+        background.update(dt);
+    }
+    
     player.update(dt);
     bullets.forEach(b => b.update(dt));
     enemies.forEach(e => e.update(dt, player.pos));
@@ -1121,6 +1270,11 @@ function update(dt) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Draw background
+    if (background) {
+        background.draw();
+    }
+    
     // Draw game elements
     particles.forEach(p => p.draw());
     powerups.forEach(p => p.draw());
@@ -1145,17 +1299,19 @@ function draw() {
     ctx.font = "12px monospace";
     ctx.textAlign = "left";
     
-    if (player.powerups.triple > 0) {
-        ctx.fillText(`Triple Shot: ${Math.ceil(player.powerups.triple)}s`, 10, powerupY);
-        powerupY += 15;
-    }
-    if (player.powerups.laser > 0) {
-        ctx.fillText(`Laser: ${Math.ceil(player.powerups.laser)}s`, 10, powerupY);
-        powerupY += 15;
-    }
-    if (player.powerups.shield > 0) {
-        ctx.fillText(`Shield: ${player.shieldHealth} hits`, 10, powerupY);
-        powerupY += 15;
+    if (player && player.powerups) {
+        if (player.powerups.triple > 0) {
+            ctx.fillText(`Triple Shot: ${Math.ceil(player.powerups.triple)}s`, 10, powerupY);
+            powerupY += 15;
+        }
+        if (player.powerups.laser > 0) {
+            ctx.fillText(`Laser: ${Math.ceil(player.powerups.laser)}s`, 10, powerupY);
+            powerupY += 15;
+        }
+        if (player.powerups.shield > 0) {
+            ctx.fillText(`Shield: ${player.shieldHealth} hits`, 10, powerupY);
+            powerupY += 15;
+        }
     }
 }
 
