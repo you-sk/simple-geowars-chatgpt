@@ -18,16 +18,16 @@ class Vec2 {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// Initialize background variable early
-let background = null;
+// Initialize rendering system
+let renderingSystem = null;
 
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    // Update background when canvas resizes
-    if (background) {
-        background.resize();
+    // Update rendering system when canvas resizes
+    if (renderingSystem) {
+        renderingSystem.renderer.resize();
     }
 }
 window.addEventListener("resize", resize);
@@ -95,136 +95,6 @@ const GameConfig = {
     maxBombs: 5,
 };
 
-// ===== Background System =====
-class BackgroundRenderer {
-    constructor() {
-        this.stars = [];
-        this.gridOffset = { x: 0, y: 0 };
-        this.gridSpeed = 10; // pixels per second
-        this.gridSize = 50;
-        this.time = 0;
-        
-        // Generate stars
-        this.generateStars();
-    }
-    
-    generateStars() {
-        const starCount = 150;
-        for (let i = 0; i < starCount; i++) {
-            this.stars.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                size: Math.random() * 2 + 0.5,
-                brightness: Math.random() * 0.5 + 0.3,
-                twinkleSpeed: Math.random() * 2 + 1,
-                twinklePhase: Math.random() * Math.PI * 2
-            });
-        }
-    }
-    
-    update(dt) {
-        this.time += dt;
-        
-        // Slowly drift the grid
-        this.gridOffset.x += this.gridSpeed * dt;
-        this.gridOffset.y += this.gridSpeed * dt * 0.7; // Different speed for more organic feel
-        
-        // Wrap grid offset
-        this.gridOffset.x %= this.gridSize;
-        this.gridOffset.y %= this.gridSize;
-        
-        // Update stars for twinkling
-        this.stars.forEach(star => {
-            star.twinklePhase += star.twinkleSpeed * dt;
-        });
-    }
-    
-    draw() {
-        // Draw animated grid
-        this.drawGrid();
-        
-        // Draw twinkling stars
-        this.drawStars();
-        
-        // Draw subtle scan lines
-        this.drawScanLines();
-    }
-    
-    drawGrid() {
-        ctx.strokeStyle = "rgba(0, 255, 0, 0.08)";
-        ctx.lineWidth = 1;
-        ctx.shadowBlur = 0;
-        
-        const startX = -this.gridOffset.x;
-        const startY = -this.gridOffset.y;
-        
-        // Vertical lines
-        for (let x = startX; x < canvas.width + this.gridSize; x += this.gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, canvas.height);
-            ctx.stroke();
-        }
-        
-        // Horizontal lines
-        for (let y = startY; y < canvas.height + this.gridSize; y += this.gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(canvas.width, y);
-            ctx.stroke();
-        }
-        
-        // Add some grid intersection dots for extra detail
-        ctx.fillStyle = "rgba(0, 255, 0, 0.15)";
-        for (let x = startX; x < canvas.width + this.gridSize; x += this.gridSize) {
-            for (let y = startY; y < canvas.height + this.gridSize; y += this.gridSize) {
-                ctx.beginPath();
-                ctx.arc(x, y, 1, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-    }
-    
-    drawStars() {
-        this.stars.forEach(star => {
-            const twinkle = 0.5 + 0.5 * Math.sin(star.twinklePhase);
-            const alpha = star.brightness * twinkle;
-            
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
-            ctx.shadowBlur = star.size * 2;
-            ctx.shadowColor = "#fff";
-            
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.shadowBlur = 0;
-        });
-    }
-    
-    drawScanLines() {
-        // Subtle horizontal scan lines that move
-        const scanLineSpeed = 20;
-        const scanLineSpacing = 4;
-        const scanOffset = (this.time * scanLineSpeed) % (scanLineSpacing * 2);
-        
-        ctx.strokeStyle = "rgba(0, 255, 255, 0.03)";
-        ctx.lineWidth = 1;
-        
-        for (let y = -scanOffset; y < canvas.height + scanLineSpacing; y += scanLineSpacing) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(canvas.width, y);
-            ctx.stroke();
-        }
-    }
-    
-    resize() {
-        // Regenerate stars when canvas resizes
-        this.stars = [];
-        this.generateStars();
-    }
-}
 
 // ===== Visual Effects =====
 class Particle {
@@ -885,9 +755,9 @@ function reset() {
     scoreMultiplier = 1;
     bombEffect = null;
     
-    // Initialize background if not already done
-    if (!background) {
-        background = new BackgroundRenderer();
+    // Initialize rendering system if not already done
+    if (!renderingSystem) {
+        renderingSystem = createRenderingSystem(canvas);
     }
     
     // Load high score from localStorage
@@ -1091,52 +961,24 @@ function useBomb() {
 }
 
 function gameOverScreen() {
-    ctx.fillStyle = "rgba(0,0,0,0.8)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!renderingSystem) return;
     
     const isNewHighScore = saveHighScore();
-    
-    ctx.fillStyle = "#f00";
-    ctx.font = "48px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 60);
-    
-    ctx.font = "20px sans-serif";
-    ctx.fillStyle = "#fff";
-    ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 - 20);
-    
-    if (isNewHighScore) {
-        ctx.fillStyle = "#ff0";
-        ctx.font = "bold 24px sans-serif";
-        ctx.fillText("NEW HIGH SCORE!", canvas.width / 2, canvas.height / 2 + 10);
-    } else {
-        ctx.fillStyle = "#999";
-        ctx.font = "18px sans-serif";
-        ctx.fillText(`High Score: ${highScore}`, canvas.width / 2, canvas.height / 2 + 10);
-    }
-    
-    ctx.font = "24px sans-serif";
-    ctx.fillStyle = "#0f0";
-    ctx.fillText("Press R / Start to Restart", canvas.width / 2, canvas.height / 2 + 60);
+    renderingSystem.renderer.renderGameOverScreen(score, highScore, isNewHighScore);
 }
 
 function pauseScreen() {
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#0f0";
-    ctx.font = "48px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
-    ctx.font = "24px sans-serif";
-    ctx.fillText("Press P / Select to Resume", canvas.width / 2, canvas.height / 2 + 40);
+    if (!renderingSystem) return;
+    
+    renderingSystem.renderer.renderPauseScreen();
 }
 
 function update(dt) {
     if (gameState !== "playing") return gameState === "gameover" ? false : true;
     
     // Update background
-    if (background) {
-        background.update(dt);
+    if (renderingSystem && renderingSystem.backgroundRenderer) {
+        renderingSystem.backgroundRenderer.update(dt);
     }
     
     player.update(dt);
@@ -1268,64 +1110,65 @@ function update(dt) {
 }
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!renderingSystem) return;
     
-    // Draw background
-    if (background) {
-        background.draw();
-    }
+    const renderer = renderingSystem.renderer;
     
-    // Draw game elements
-    particles.forEach(p => p.draw());
-    powerups.forEach(p => p.draw());
-    player.draw();
-    bullets.forEach(b => b.draw());
-    enemies.forEach(e => e.draw());
+    // Begin new frame
+    renderer.beginFrame();
+    
+    // Always draw background and game state
+    renderer.renderBackground(0); // deltaTime handled in background update
+    
+    // Draw game elements in layers (always visible)
+    renderer.renderEntities(particles);
+    renderer.renderEntities(powerups);
+    renderer.renderEntities(player);
+    renderer.renderEntities(bullets);
+    renderer.renderEntities(enemies);
     
     // Draw bomb effect
     if (bombEffect) {
-        bombEffect.draw();
+        renderer.renderBombEffect(bombEffect);
     }
     
-    // Draw difficulty indicator
-    ctx.fillStyle = "#666";
-    ctx.font = "12px monospace";
-    ctx.textAlign = "left";
-    ctx.fillText(`Difficulty: ${getDifficultyMultiplier().toFixed(1)}x`, 10, canvas.height - 10);
+    // Prepare UI data
+    const uiData = {
+        difficultyMultiplier: getDifficultyMultiplier(),
+        player: player,
+        score: score,
+        highScore: highScore,
+        lives: lives,
+        bombs: bombs,
+        comboCount: comboCount,
+        scoreMultiplier: scoreMultiplier
+    };
     
-    // Draw active powerups
-    let powerupY = 30;
-    ctx.fillStyle = "#fff";
-    ctx.font = "12px monospace";
-    ctx.textAlign = "left";
+    // Draw UI elements
+    renderer.renderUI(gameState, uiData);
     
-    if (player && player.powerups) {
-        if (player.powerups.triple > 0) {
-            ctx.fillText(`Triple Shot: ${Math.ceil(player.powerups.triple)}s`, 10, powerupY);
-            powerupY += 15;
-        }
-        if (player.powerups.laser > 0) {
-            ctx.fillText(`Laser: ${Math.ceil(player.powerups.laser)}s`, 10, powerupY);
-            powerupY += 15;
-        }
-        if (player.powerups.shield > 0) {
-            ctx.fillText(`Shield: ${player.shieldHealth} hits`, 10, powerupY);
-            powerupY += 15;
-        }
-    }
+    // End frame
+    renderer.endFrame();
 }
 
 function loop(ts) {
     const dt = (ts - lastTs) / 1000;
     lastTs = ts;
     
+    // Update game logic if not paused or game over
+    if (gameState === "playing") {
+        if (!update(dt)) {
+            gameState = "gameover";
+        }
+    }
+    
+    // Always draw the current state
+    draw();
+    
+    // Handle state-specific rendering
     if (gameState === "paused") {
-        draw();
         pauseScreen();
-    } else if (update(dt)) {
-        draw();
-    } else {
-        draw();
+    } else if (gameState === "gameover") {
         gameOverScreen();
     }
     
